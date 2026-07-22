@@ -17,7 +17,6 @@ const ASSETS = new Map([
   ['modules/recommendation-engine.js', 'd2bf28e4e7e1b9c39f988ed7d6c6c1fa5eda9a23b5abc233d7469ba51212c956'],
   ['modules/runtime-manager.js', '9c2f94606f26975b78f6a063c8d88bd72c4894f87a913c0d07a6ab5da5e26f65'],
   ['styles.css', 'e69106f378245816985822a1df7def355008dabdb4c301825c0c4d1a8e04df6e'],
-  ['sw.js', 'e484fed742169b9ffce8af1ba31a93962fcf98da4f8c1b121c0699593cff4ff7'],
   ['vendor/SUPABASE-LICENSE.txt', '334dd6820e2eaeab2064e7c59001b810566728a28a41a7c1dbf69bbee17d0936'],
   ['vendor/TESSERACT-LICENSE.txt', 'b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1'],
   ['vendor/supabase-2.110.7.js', '2697f51bb3efa5f10b5b0bca2a39b3772b1b8f810e6885e3bb8d69c3242d5e07'],
@@ -52,4 +51,4 @@ async function download(path, expectedHash) {
 await mkdir('public', { recursive: true });
 await Promise.all([...ASSETS].map(([path, hash]) => download(path, hash)));
 await writeFile(resolve('public', '.nojekyll'), '');
-console.log(`AS Downtime public build ready: ${ASSETS.size} verified assets.`);
+console.log(`AS Downtime public build ready: ${ASSETS.size} verified remote assets + local sw.js.`);
