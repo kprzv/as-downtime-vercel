@@ -1,4 +1,4 @@
-name: Unpack AS Downtime Vercel build
+name: Assemble AS Downtime Vercel project
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  unpack:
+  assemble:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -17,26 +17,80 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Reconstruct and unpack project
+      - name: Restore Vercel server files
         shell: bash
         run: |
           set -euo pipefail
-          cat payload/part-* > /tmp/as-downtime.zip.b64
-          base64 --decode /tmp/as-downtime.zip.b64 > /tmp/as-downtime.zip
-          mkdir -p /tmp/as-downtime
-          unzip -q /tmp/as-downtime.zip -d /tmp/as-downtime
+          cat payload/server-part-* > /tmp/asd-server.zip.b64
+          base64 --decode /tmp/asd-server.zip.b64 > /tmp/asd-server.zip
+          unzip -q -o /tmp/asd-server.zip -d .
 
-          find . -mindepth 1 -maxdepth 1 ! -name .git ! -name .github -exec rm -rf {} +
-          cp -a /tmp/as-downtime/. .
-          rm -rf payload UPLOAD-IN-PROGRESS.md
-          rm -f .github/workflows/unpack-vercel-build.yml
-          rmdir .github/workflows 2>/dev/null || true
-          rmdir .github 2>/dev/null || true
+      - name: Download verified public application files
+        shell: bash
+        run: |
+          set -euo pipefail
+          PRIMARY="https://6a6116c13f60e00f80ab923a--as-downtime.netlify.app"
+          FALLBACK="https://as-downtime.netlify.app"
+
+          fetch_asset() {
+            local path="$1"
+            local dest="public/$path"
+            mkdir -p "$(dirname "$dest")"
+            if ! curl -fsSL --retry 5 --retry-all-errors "$PRIMARY/$path" -o "$dest"; then
+              curl -fsSL --retry 5 --retry-all-errors "$FALLBACK/$path" -o "$dest"
+            fi
+          }
+
+          fetch_asset config.js
+          fetch_asset icons/icon-180.png
+          fetch_asset icons/icon-192.png
+          fetch_asset icons/icon-512.png
+          fetch_asset index.html
+          fetch_asset main.js
+          fetch_asset manifest.webmanifest
+          fetch_asset modules/insights.js
+          fetch_asset modules/recommendation-engine.js
+          fetch_asset modules/runtime-manager.js
+          fetch_asset styles.css
+          fetch_asset sw.js
+          fetch_asset vendor/SUPABASE-LICENSE.txt
+          fetch_asset vendor/TESSERACT-LICENSE.txt
+          fetch_asset vendor/supabase-2.110.7.js
+          fetch_asset vendor/tesseract-5.1.1.min.js
+          fetch_asset vendor/tesseract-worker-5.1.1.min.js
+          : > public/.nojekyll
+
+          cat > /tmp/public-sha256.txt <<'SHA256'
+          e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  public/.nojekyll
+          34684c9d171fc28b91ef4008c56d032ec70c3a6c8c9e69da5dd2bf9b10ab0e70  public/config.js
+          a16977a1d31bc66cfda2a3e191fe8d78e8082099d230f16f4197d3e4f3d75d50  public/icons/icon-180.png
+          feee02f1af32e56a7ed29d372d7d21bd0b46a586ddcf99f1b0dc253a4f6293fd  public/icons/icon-192.png
+          a8e439abdc8610c6e40ed6f7cfcac603a34881d31e6d3bb448905bf28d004033  public/icons/icon-512.png
+          71725191eec2065660b681615f86a64d1413ed61efe9e0cd554010c3373dba6f  public/index.html
+          9734db1b26fad5c5de4f94cf71229b0dbcd5c04319b876070e13bd6761c3d052  public/main.js
+          933806a0cf1eb067066d9bd4ad938f5f4b6f007b56b07ed44f339a6f406a54ab  public/manifest.webmanifest
+          7499ab29f0ae66d5d91dae2670e6c5d86cd44f1c84f8cc5441e0d8f1118e66ac  public/modules/insights.js
+          d2bf28e4e7e1b9c39f988ed7d6c6c1fa5eda9a23b5abc233d7469ba51212c956  public/modules/recommendation-engine.js
+          9c2f94606f26975b78f6a063c8d88bd72c4894f87a913c0d07a6ab5da5e26f65  public/modules/runtime-manager.js
+          e69106f378245816985822a1df7def355008dabdb4c301825c0c4d1a8e04df6e  public/styles.css
+          e484fed742169b9ffce8af1ba31a93962fcf98da4f8c1b121c0699593cff4ff7  public/sw.js
+          334dd6820e2eaeab2064e7c59001b810566728a28a41a7c1dbf69bbee17d0936  public/vendor/SUPABASE-LICENSE.txt
+          b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1  public/vendor/TESSERACT-LICENSE.txt
+          2697f51bb3efa5f10b5b0bca2a39b3772b1b8f810e6885e3bb8d69c3242d5e07  public/vendor/supabase-2.110.7.js
+          a8e29918d098b2b06e1012bdaeffb4aec0445c5d5654709023e0bd1f442a80e8  public/vendor/tesseract-5.1.1.min.js
+          aca1229639fc9907d86f96e825955a2b7c5716d17f3bc3acd71f9c7ab66181fc  public/vendor/tesseract-worker-5.1.1.min.js
+          SHA256
+          sed -i 's/^          //' /tmp/public-sha256.txt
+          sha256sum -c /tmp/public-sha256.txt
 
       - name: Commit complete Vercel project
         shell: bash
         run: |
           set -euo pipefail
+          rm -rf payload UPLOAD-IN-PROGRESS.md
+          rm -f .github/workflows/unpack-vercel-build.yml
+          rmdir .github/workflows 2>/dev/null || true
+          rmdir .github 2>/dev/null || true
           git config user.name "AS Downtime Builder"
           git config user.email "actions@users.noreply.github.com"
           git add -A
