@@ -1,0 +1,44 @@
+name: Unpack AS Downtime Vercel build
+
+on:
+  push:
+    paths:
+      - "payload/READY"
+
+permissions:
+  contents: write
+
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reconstruct and unpack project
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat payload/part-* > /tmp/as-downtime.zip.b64
+          base64 --decode /tmp/as-downtime.zip.b64 > /tmp/as-downtime.zip
+          mkdir -p /tmp/as-downtime
+          unzip -q /tmp/as-downtime.zip -d /tmp/as-downtime
+
+          find . -mindepth 1 -maxdepth 1 ! -name .git ! -name .github -exec rm -rf {} +
+          cp -a /tmp/as-downtime/. .
+          rm -rf payload UPLOAD-IN-PROGRESS.md
+          rm -f .github/workflows/unpack-vercel-build.yml
+          rmdir .github/workflows 2>/dev/null || true
+          rmdir .github 2>/dev/null || true
+
+      - name: Commit complete Vercel project
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "AS Downtime Builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Deploy AS Downtime 3.10.5 for Vercel"
+          git push origin HEAD:main
