@@ -1,0 +1,1 @@
+Static interactive prototype for Grilyazh Catering.
